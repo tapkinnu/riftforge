@@ -1,0 +1,20 @@
+{
+  "_schema": "Riftforge Resource Definitions",
+  "_description": "Human-editable resource node stats.",
+  "resources": {
+    "aether": {
+      "id": "aether",
+      "name": "Aether Crystal",
+      "pick_radius": 36.0,
+      "color": [0.2, 0.85, 1.0],
+      "crystal_count": 5
+    },
+    "crystal": {
+      "id": "crystal",
+      "name": "Shadow Crystal",
+      "pick_radius": 36.0,
+      "color": [0.72, 0.28, 1.0],
+      "crystal_count": 5
+    }
+  }
+}

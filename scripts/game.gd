@@ -4,6 +4,8 @@ const TEAM_PLAYER := 0
 const TEAM_ENEMY := 1
 const GROUND_Y := 0.0
 
+const DataLoader := preload("res://scripts/data_loader.gd")
+
 var rng := RandomNumberGenerator.new()
 var camera: Camera3D
 var camera_pivot: Node3D
@@ -536,36 +538,41 @@ func _alive(n: Node) -> bool:
 	return is_instance_valid(n) and n.has_meta("hp") and float(n.get_meta("hp")) > 0.0
 
 func _create_unit(name: String, team: int, pos: Vector3, role: String) -> Node3D:
+	var d := DataLoader.get_unit(role)
 	var n := Node3D.new()
 	n.name = name
 	n.position = pos
 	n.set_meta("team", team)
 	n.set_meta("role", role)
-	var hp: float = 190.0 if role == "hero" else (92.0 if role == "worker" else 130.0)
+	var hp: float = d.get("hp", 130.0)
 	n.set_meta("hp", hp)
 	n.set_meta("max_hp", hp)
-	n.set_meta("speed", 30.0 if role == "hero" else (36.0 if role == "worker" else 32.0))
-	n.set_meta("range", 22.0 if role == "hero" else 16.0)
-	n.set_meta("damage", 26.0 if role == "hero" else (8.0 if role == "worker" else 15.0))
-	n.set_meta("attack_speed", 0.9 if role == "hero" else 1.1)
+	n.set_meta("speed", d.get("speed", 32.0))
+	n.set_meta("range", d.get("range", 16.0))
+	n.set_meta("damage", d.get("damage", 15.0))
+	n.set_meta("attack_speed", d.get("attack_speed", 1.1))
 	n.set_meta("target_pos", pos)
 	n.set_meta("attack_target", null)
 	n.set_meta("harvest_target", null)
 	n.set_meta("harvest_timer", 0.0)
 	n.set_meta("cooldown", 0.25)
-	n.set_meta("pick_radius", 32.0)
+	n.set_meta("pick_radius", d.get("pick_radius", 32.0))
 	var base_col := Color(0.85, 0.66, 0.25, 1.0) if team == TEAM_PLAYER else Color(0.12, 0.48, 0.16, 1.0)
 	var glow_col := Color(0.2, 0.75, 1.0, 1.0) if team == TEAM_PLAYER else Color(0.6, 1.0, 0.22, 1.0)
-	var body := _cylinder("Body", 4.0 if role != "hero" else 5.2, 12.0 if role != "hero" else 16.0, _mat(base_col), Vector3(0, 6, 0))
+	var body_r: float = d.get("body_radius", 4.0)
+	var body_h: float = d.get("body_height", 12.0)
+	var head_r: float = d.get("head_radius", 3.0)
+	var head_y: float = d.get("head_y", 14.0)
+	var body := _cylinder("Body", body_r, body_h, _mat(base_col), Vector3(0, body_h * 0.5, 0))
 	n.add_child(body)
-	var head := _sphere("Head", 3.0 if role != "hero" else 3.7, _mat(Color(0.78, 0.62, 0.45, 1.0)), Vector3(0, 14.0 if role != "hero" else 18.0, 0))
+	var head := _sphere("Head", head_r, _mat(Color(0.78, 0.62, 0.45, 1.0)), Vector3(0, head_y, 0))
 	n.add_child(head)
-	if role == "hero":
+	if d.get("has_crown", false):
 		n.add_child(_cylinder("CrownGlow", 5.5, 0.7, _mat(glow_col, glow_col, 1.9), Vector3(0, 22, 0)))
 		n.add_child(_box("Banner", Vector3(1.0, 18.0, 1.0), _mat(glow_col, glow_col, 1.3), Vector3(-5, 14, 0)))
-	elif role == "worker":
+	elif d.get("has_hammer", false):
 		n.add_child(_box("Hammer", Vector3(1.3, 7.0, 1.3), _mat(Color(0.55, 0.45, 0.32, 1.0)), Vector3(5, 8, 0)))
-	else:
+	elif d.get("has_blade", false):
 		n.add_child(_box("Blade", Vector3(1.2, 10.0, 1.2), _mat(Color(0.78, 0.82, 0.86, 1.0), glow_col, 0.35), Vector3(5, 11, 0)))
 	_add_selection(n, 8.5, Color(0.2, 0.8, 1.0, 0.42) if team == TEAM_PLAYER else Color(1.0, 0.2, 0.12, 0.36))
 	_add_health(n, 13.0 if role != "hero" else 18.0)
@@ -573,15 +580,16 @@ func _create_unit(name: String, team: int, pos: Vector3, role: String) -> Node3D
 	return n
 
 func _create_building(name: String, team: int, pos: Vector3, btype: String) -> Node3D:
+	var d := DataLoader.get_building(btype)
 	var n := Node3D.new()
 	n.name = name
 	n.position = pos
 	n.set_meta("team", team)
 	n.set_meta("building_type", btype)
-	var hp: float = 620.0 if btype == "hall" else (340.0 if btype == "tower" else 430.0)
+	var hp: float = d.get("hp", 430.0)
 	n.set_meta("hp", hp)
 	n.set_meta("max_hp", hp)
-	n.set_meta("pick_radius", 58.0)
+	n.set_meta("pick_radius", d.get("pick_radius", 58.0))
 	var main_col := Color(0.54, 0.44, 0.28, 1.0) if team == TEAM_PLAYER else Color(0.20, 0.34, 0.16, 1.0)
 	var roof_col := Color(0.68, 0.34, 0.14, 1.0) if team == TEAM_PLAYER else Color(0.16, 0.48, 0.18, 1.0)
 	if btype == "hall":
@@ -596,8 +604,8 @@ func _create_building(name: String, team: int, pos: Vector3, btype: String) -> N
 		n.add_child(_cylinder("TowerBase", 11, 34, _mat(main_col), Vector3(0, 17, 0)))
 		n.add_child(_cone("Spire", 14, 18, _mat(roof_col), Vector3(0, 42, 0)))
 		n.add_child(_sphere("WatchGlow", 4, _mat(Color(1.0, 0.4, 0.1, 1.0), Color(1.0, 0.3, 0.05, 1.0), 2.2), Vector3(0, 52, 0)))
-	_add_selection(n, 24.0 if btype != "tower" else 16.0, Color(0.2, 0.8, 1.0, 0.30) if team == TEAM_PLAYER else Color(1.0, 0.2, 0.12, 0.30))
-	_add_health(n, 38.0 if btype == "hall" else 28.0)
+	_add_selection(n, d.get("selection_radius", 24.0), Color(0.2, 0.8, 1.0, 0.30) if team == TEAM_PLAYER else Color(1.0, 0.2, 0.12, 0.30))
+	_add_health(n, d.get("health_y", 28.0))
 	add_child(n)
 	return n
 
